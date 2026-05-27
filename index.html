@@ -4,14 +4,14 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-  <title>Check Stock</title>
+  <title>Check Stock Proxy</title>
 
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
 
 <body class="bg-gray-100">
 
-  <div class="max-w-6xl mx-auto p-5">
+  <div class="max-w-7xl mx-auto p-5">
 
     <div class="bg-white rounded-3xl shadow-xl p-6">
 
@@ -20,26 +20,35 @@
       </h1>
 
       <p class="text-gray-500 mb-6">
-        Cari PLU, Barcode, atau Deskripsi
+        Menggunakan Proxy CORS
       </p>
 
       <!-- SEARCH -->
       <input
         type="text"
         id="search"
-        placeholder="Cari produk..."
+        placeholder="Cari PLU / Barcode / Deskripsi"
         class="w-full border rounded-2xl px-4 py-3 mb-5 outline-none"
       >
 
+      <!-- STATUS -->
+      <div
+        id="status"
+        class="bg-blue-50 text-blue-700 rounded-2xl p-4 mb-5"
+      >
+        Loading produk...
+      </div>
+
+      <!-- TOTAL -->
       <div class="text-sm text-gray-500 mb-5">
         Total Produk:
         <span id="totalData">0</span>
       </div>
 
-      <!-- LIST -->
+      <!-- PRODUCT LIST -->
       <div
         id="productList"
-        class="space-y-3"
+        class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"
       ></div>
 
     </div>
@@ -50,12 +59,17 @@
 
     let products = []
 
-    // CORS FIX
+    // =========================
+    // PROXY API
+    // =========================
+
     const API_URL =
-      "https://api.allorigins.win/raw?url=" +
+      "https://corsproxy.io/?" +
       encodeURIComponent(
         "https://app.alfastore.co.id/prd/api/cex/get_product_list/?storeId=L257"
       )
+
+    // =========================
 
     async function loadProducts() {
 
@@ -71,6 +85,9 @@
 
         products = data
 
+        document.getElementById("status").innerHTML =
+          "Produk berhasil dimuat"
+
         document.getElementById("totalData").innerText =
           products.length
 
@@ -81,7 +98,8 @@
 
         console.error(err)
 
-        alert("Gagal load API")
+        document.getElementById("status").innerHTML =
+          "Gagal load API"
 
       }
 
@@ -94,25 +112,45 @@
 
       list.innerHTML = ""
 
-      data.slice(0, 100).forEach((item) => {
+      if (data.length === 0) {
 
-        list.innerHTML += `
-          <div class="bg-gray-50 rounded-2xl p-4">
-
-            <div class="font-semibold">
-              ${item.desc}
-            </div>
-
-            <div class="text-sm text-gray-500 mt-2">
-              PLU: ${item.plu}
-            </div>
-
-            <div class="text-sm text-gray-500">
-              Barcode: ${item.barcode}
-            </div>
-
+        list.innerHTML = `
+          <div class="text-gray-400">
+            Produk tidak ditemukan
           </div>
         `
+
+        return
+
+      }
+
+      data.slice(0, 200).forEach((item) => {
+
+        const card =
+          document.createElement("div")
+
+        card.className =
+          "bg-gray-50 rounded-2xl p-4 hover:shadow-lg transition"
+
+        card.innerHTML = `
+          <div class="font-semibold text-sm mb-2">
+            ${item.desc}
+          </div>
+
+          <div class="text-xs text-gray-500">
+            PLU: ${item.plu}
+          </div>
+
+          <div class="text-xs text-gray-500">
+            Barcode: ${item.barcode}
+          </div>
+
+          <div class="text-xs text-gray-500">
+            Planogram: ${item.planogram}
+          </div>
+        `
+
+        list.appendChild(card)
 
       })
 
@@ -126,6 +164,13 @@
 
         const keyword =
           this.value.toLowerCase()
+
+        if (!keyword) {
+
+          renderProducts(products)
+          return
+
+        }
 
         const filtered =
           products.filter((item) => {
