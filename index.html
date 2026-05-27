@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 
   <title>Check Stock L257</title>
 
@@ -34,7 +34,7 @@
         >
 
         <button
-          onclick="loadProducts()"
+          id="refreshBtn"
           class="bg-black text-white px-5 rounded-2xl"
         >
           Refresh
@@ -45,6 +45,13 @@
       <div class="text-sm text-gray-500 mb-4">
         Total Produk:
         <span id="totalData">0</span>
+      </div>
+
+      <div
+        id="loading"
+        class="hidden bg-blue-50 text-blue-700 rounded-2xl p-4 mb-4"
+      >
+        Loading produk...
       </div>
 
       <!-- LIST -->
@@ -62,7 +69,7 @@
     let products = []
 
     // =========================
-    // PROXY CORS
+    // API PROXY
     // =========================
 
     const API_URL =
@@ -74,20 +81,53 @@
 
       try {
 
+        document
+          .getElementById("loading")
+          .classList.remove("hidden")
+
         const response =
           await fetch(API_URL)
 
-        const result =
-          await response.json()
+        const text =
+          await response.text()
+
+        let result = []
+
+        try {
+
+          result = JSON.parse(text)
+
+        }
+        catch {
+
+          console.log(text)
+
+          alert(
+            "Response API bukan JSON.\nCek console browser."
+          )
+
+          return
+        }
 
         if (Array.isArray(result)) {
+
           products = result
+
         }
         else if (result.data) {
+
           products = result.data
+
         }
         else if (result.products) {
+
           products = result.products
+
+        }
+        else {
+
+          products = []
+
         }
 
         document.getElementById("totalData").innerText =
@@ -100,7 +140,16 @@
 
         console.error(err)
 
-        alert("Gagal load API")
+        alert(
+          "Gagal load API.\nKemungkinan proxy diblok."
+        )
+
+      }
+      finally {
+
+        document
+          .getElementById("loading")
+          .classList.add("hidden")
 
       }
 
@@ -112,6 +161,17 @@
         document.getElementById("productList")
 
       list.innerHTML = ""
+
+      if (data.length === 0) {
+
+        list.innerHTML = `
+          <div class="text-center text-gray-400 py-10">
+            Tidak ada data
+          </div>
+        `
+
+        return
+      }
 
       data.slice(0, 50).forEach((item) => {
 
@@ -132,27 +192,33 @@
           item.BARCODE ||
           "-"
 
-        list.innerHTML += `
-          <div class="bg-gray-50 rounded-2xl p-4">
+        const div =
+          document.createElement("div")
 
-            <div class="font-semibold mb-2">
-              ${desc}
-            </div>
+        div.className =
+          "bg-gray-50 rounded-2xl p-4"
 
-            <div class="text-sm text-gray-500">
-              PLU: ${plu}
-            </div>
+        div.innerHTML = `
+          <div class="font-semibold mb-2">
+            ${desc}
+          </div>
 
-            <div class="text-sm text-gray-500">
-              Barcode: ${barcode}
-            </div>
+          <div class="text-sm text-gray-500">
+            PLU: ${plu}
+          </div>
 
+          <div class="text-sm text-gray-500">
+            Barcode: ${barcode}
           </div>
         `
+
+        list.appendChild(div)
 
       })
 
     }
+
+    // SEARCH
 
     document
       .getElementById("search")
@@ -160,6 +226,13 @@
 
         const keyword =
           this.value.toLowerCase()
+
+        if (!keyword) {
+
+          renderProducts(products)
+          return
+
+        }
 
         const filtered =
           products.filter((item) => {
@@ -190,6 +263,14 @@
         renderProducts(filtered)
 
       })
+
+    // BUTTON
+
+    document
+      .getElementById("refreshBtn")
+      .addEventListener("click", loadProducts)
+
+    // AUTO LOAD
 
     loadProducts()
 
