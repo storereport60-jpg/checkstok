@@ -4,14 +4,14 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-  <title>Check Stock L257</title>
+  <title>Check Stock</title>
 
   <script src="https://cdn.tailwindcss.com"></script>
 </head>
 
 <body class="bg-gray-100">
 
-  <div class="max-w-7xl mx-auto p-5">
+  <div class="max-w-6xl mx-auto p-5">
 
     <div class="bg-white rounded-3xl shadow-xl p-6">
 
@@ -20,58 +20,27 @@
       </h1>
 
       <p class="text-gray-500 mb-6">
-        Search PLU, Barcode, atau Deskripsi
+        Cari PLU, Barcode, atau Deskripsi
       </p>
 
       <!-- SEARCH -->
-      <div class="flex gap-3 mb-5">
+      <input
+        type="text"
+        id="search"
+        placeholder="Cari produk..."
+        class="w-full border rounded-2xl px-4 py-3 mb-5 outline-none"
+      >
 
-        <input
-          type="text"
-          id="search"
-          placeholder="Cari produk..."
-          class="flex-1 border rounded-2xl px-4 py-3 outline-none"
-        >
-
-        <button
-          id="refreshBtn"
-          class="bg-black text-white px-5 rounded-2xl"
-        >
-          Refresh
-        </button>
-
-      </div>
-
-      <div class="text-sm text-gray-500 mb-4">
+      <div class="text-sm text-gray-500 mb-5">
         Total Produk:
         <span id="totalData">0</span>
       </div>
 
-      <!-- LOADING -->
+      <!-- LIST -->
       <div
-        id="loading"
-        class="hidden bg-blue-50 text-blue-700 rounded-2xl p-4 mb-4"
-      >
-        Loading produk...
-      </div>
-
-      <div class="grid grid-cols-1 lg:grid-cols-2 gap-5">
-
-        <!-- LIST -->
-        <div
-          id="productList"
-          class="bg-gray-50 rounded-3xl p-4 h-[700px] overflow-auto space-y-3"
-        ></div>
-
-        <!-- DETAIL -->
-        <div
-          id="detail"
-          class="bg-gray-50 rounded-3xl p-5 text-gray-400 flex items-center justify-center"
-        >
-          Pilih produk untuk melihat detail
-        </div>
-
-      </div>
+        id="productList"
+        class="space-y-3"
+      ></div>
 
     </div>
 
@@ -81,36 +50,25 @@
 
     let products = []
 
-    // API LANGSUNG
+    // CORS FIX
     const API_URL =
-      "https://app.alfastore.co.id/prd/api/cex/get_product_list/?storeId=L257"
+      "https://api.allorigins.win/raw?url=" +
+      encodeURIComponent(
+        "https://app.alfastore.co.id/prd/api/cex/get_product_list/?storeId=L257"
+      )
 
     async function loadProducts() {
 
       try {
 
-        document
-          .getElementById("loading")
-          .classList.remove("hidden")
+        const response =
+          await fetch(API_URL)
 
-        // PENTING:
-        // mode:"cors"
-        // credentials:"omit"
-
-        const response = await fetch(API_URL, {
-          method: "GET",
-          mode: "cors",
-          credentials: "omit",
-          headers: {
-            "Accept": "application/json"
-          }
-        })
-
-        const data = await response.json()
+        const data =
+          await response.json()
 
         console.log(data)
 
-        // API SUDAH ARRAY
         products = data
 
         document.getElementById("totalData").innerText =
@@ -123,16 +81,7 @@
 
         console.error(err)
 
-        alert(
-          "Gagal load API.\nCek console browser (F12)."
-        )
-
-      }
-      finally {
-
-        document
-          .getElementById("loading")
-          .classList.add("hidden")
+        alert("Gagal load API")
 
       }
 
@@ -145,75 +94,27 @@
 
       list.innerHTML = ""
 
-      if (data.length === 0) {
-
-        list.innerHTML = `
-          <div class="text-center text-gray-400 py-10">
-            Tidak ada produk
-          </div>
-        `
-
-        return
-      }
-
       data.slice(0, 100).forEach((item) => {
 
-        const div =
-          document.createElement("div")
+        list.innerHTML += `
+          <div class="bg-gray-50 rounded-2xl p-4">
 
-        div.className =
-          "bg-white rounded-2xl p-4 cursor-pointer hover:shadow-lg transition"
+            <div class="font-semibold">
+              ${item.desc}
+            </div>
 
-        div.innerHTML = `
-          <div class="font-semibold text-sm mb-2">
-            ${item.desc}
-          </div>
+            <div class="text-sm text-gray-500 mt-2">
+              PLU: ${item.plu}
+            </div>
 
-          <div class="text-xs text-gray-500">
-            PLU: ${item.plu}
-          </div>
+            <div class="text-sm text-gray-500">
+              Barcode: ${item.barcode}
+            </div>
 
-          <div class="text-xs text-gray-500">
-            Barcode: ${item.barcode}
           </div>
         `
-
-        div.onclick = () => showDetail(item)
-
-        list.appendChild(div)
 
       })
-
-    }
-
-    function showDetail(item) {
-
-      const detail =
-        document.getElementById("detail")
-
-      let html =
-        `<div class="space-y-3 w-full">`
-
-      for (const key in item) {
-
-        html += `
-          <div class="bg-white rounded-2xl p-4">
-
-            <div class="text-xs text-gray-500 mb-1">
-              ${key}
-            </div>
-
-            <div class="font-semibold break-all">
-              ${item[key]}
-            </div>
-
-          </div>
-        `
-      }
-
-      html += `</div>`
-
-      detail.innerHTML = html
 
     }
 
@@ -226,17 +127,11 @@
         const keyword =
           this.value.toLowerCase()
 
-        if (!keyword) {
-
-          renderProducts(products)
-          return
-
-        }
-
         const filtered =
           products.filter((item) => {
 
             return (
+
               String(item.plu)
                 .toLowerCase()
                 .includes(keyword)
@@ -252,6 +147,7 @@
               String(item.desc)
                 .toLowerCase()
                 .includes(keyword)
+
             )
 
           })
@@ -259,12 +155,6 @@
         renderProducts(filtered)
 
       })
-
-    document
-      .getElementById("refreshBtn")
-      .addEventListener("click", loadProducts)
-
-    // AUTO LOAD
 
     loadProducts()
 
