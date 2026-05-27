@@ -1,0 +1,274 @@
+// Cara online:
+// 1. Upload project ini ke Github
+// 2. Deploy ke Vercel
+// 3. Jika API terkena CORS gunakan backend proxy
+//
+// Install:
+// npm install
+// npm install lucide-react
+// npm run dev
+//
+// Deploy:
+// https://vercel.com
+//
+// Backend proxy Express.js contoh:
+//
+// const express = require('express')
+// const cors = require('cors')
+// const app = express()
+//
+// app.use(cors())
+//
+// app.get('/api/products', async (req, res) => {
+//   const response = await fetch(
+//     'https://app.alfastore.co.id/prd/api/cex/get_product_list/?storeId=L257'
+//   )
+//
+//   const data = await response.json()
+//   res.json(data)
+// })
+//
+// app.listen(3001)
+//
+// lalu frontend ubah API_URL menjadi:
+// http://localhost:3001/api/products
+
+export default function App() {
+  return (
+    <div className="min-h-screen bg-gray-100 p-6">
+      <div className="max-w-4xl mx-auto">
+        <div className="bg-white rounded-3xl shadow-xl p-6">
+          <div className="mb-6">
+            <h1 className="text-3xl font-bold">Check Stock L257</h1>
+            <p className="text-gray-500 mt-2">
+              Search berdasarkan PLU, Barcode, atau Deskripsi Produk
+            </p>
+          </div>
+
+          <SearchProduct />
+        </div>
+      </div>
+    </div>
+  )
+}
+
+import { useEffect, useMemo, useState } from 'react'
+import { Search, Package, Barcode, RefreshCcw } from 'lucide-react'
+
+function SearchProduct() {
+  const [products, setProducts] = useState([])
+  const [filtered, setFiltered] = useState([])
+  const [keyword, setKeyword] = useState('')
+  const [loading, setLoading] = useState(false)
+  const [selected, setSelected] = useState(null)
+  const [error, setError] = useState('')
+
+  const API_URL =
+    'https://app.alfastore.co.id/prd/api/cex/get_product_list/?storeId=L257'
+
+  async function loadProducts() {
+    try {
+      setLoading(true)
+      setError('')
+
+      const response = await fetch(API_URL)
+
+      if (!response.ok) {
+        throw new Error('Gagal mengambil data produk')
+      }
+
+      const result = await response.json()
+
+      let data = []
+
+      if (Array.isArray(result)) {
+        data = result
+      } else if (result.data) {
+        data = result.data
+      } else if (result.products) {
+        data = result.products
+      }
+
+      setProducts(data)
+      setFiltered(data.slice(0, 10))
+    } catch (err) {
+      console.error(err)
+      setError(
+        'API kemungkinan terkena CORS. Jalankan menggunakan backend proxy jika data tidak muncul.'
+      )
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    loadProducts()
+  }, [])
+
+  useEffect(() => {
+    if (!keyword.trim()) {
+      setFiltered(products.slice(0, 10))
+      return
+    }
+
+    const lower = keyword.toLowerCase()
+
+    const result = products.filter((item) => {
+      const plu = String(item.plu || item.PLU || '')
+      const barcode = String(item.barcode || item.BARCODE || '')
+      const desc = String(
+        item.description ||
+          item.desc ||
+          item.DESCRIPTION ||
+          item.DESKRIPSI ||
+          ''
+      ).toLowerCase()
+
+      return (
+        plu.includes(lower) ||
+        barcode.includes(lower) ||
+        desc.includes(lower)
+      )
+    })
+
+    setFiltered(result.slice(0, 20))
+  }, [keyword, products])
+
+  const totalData = useMemo(() => products.length, [products])
+
+  return (
+    <div>
+      <div className="flex items-center gap-3 mb-4">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-3 text-gray-400" size={18} />
+
+          <input
+            type="text"
+            value={keyword}
+            onChange={(e) => setKeyword(e.target.value)}
+            placeholder="Cari PLU / Barcode / Deskripsi"
+            className="w-full border rounded-2xl pl-10 pr-4 py-3 outline-none focus:ring-2 focus:ring-black"
+          />
+        </div>
+
+        <button
+          onClick={loadProducts}
+          className="bg-black text-white rounded-2xl px-4 py-3 flex items-center gap-2"
+        >
+          <RefreshCcw size={18} />
+          Refresh
+        </button>
+      </div>
+
+      <div className="mb-4 text-sm text-gray-500">
+        Total Produk: {totalData}
+      </div>
+
+      {loading && (
+        <div className="bg-blue-50 text-blue-700 p-4 rounded-2xl mb-4">
+          Loading data produk...
+        </div>
+      )}
+
+      {error && (
+        <div className="bg-red-50 text-red-700 p-4 rounded-2xl mb-4">
+          {error}
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+        <div className="bg-gray-50 rounded-3xl p-4 max-h-[600px] overflow-auto">
+          <h2 className="font-semibold text-lg mb-4">Hasil Pencarian</h2>
+
+          <div className="space-y-3">
+            {filtered.map((item, index) => {
+              const desc =
+                item.description ||
+                item.desc ||
+                item.DESCRIPTION ||
+                item.DESKRIPSI ||
+                'Tidak ada deskripsi'
+
+              const plu = item.plu || item.PLU || '-'
+              const barcode = item.barcode || item.BARCODE || '-'
+
+              return (
+                <button
+                  key={index}
+                  onClick={() => setSelected(item)}
+                  className="w-full bg-white rounded-2xl p-4 text-left hover:shadow-md transition"
+                >
+                  <div className="font-semibold text-sm mb-2">{desc}</div>
+
+                  <div className="text-xs text-gray-500 flex flex-col gap-1">
+                    <div>PLU: {plu}</div>
+                    <div>Barcode: {barcode}</div>
+                  </div>
+                </button>
+              )
+            })}
+
+            {!loading && filtered.length === 0 && (
+              <div className="text-center text-gray-400 py-10">
+                Produk tidak ditemukan
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="bg-gray-50 rounded-3xl p-6">
+          <h2 className="font-semibold text-lg mb-4">Detail Produk</h2>
+
+          {selected ? (
+            <div className="space-y-4">
+              <div className="bg-white rounded-2xl p-4 flex items-center gap-3">
+                <Package />
+                <div>
+                  <div className="text-sm text-gray-500">Deskripsi</div>
+                  <div className="font-semibold">
+                    {selected.description ||
+                      selected.desc ||
+                      selected.DESCRIPTION ||
+                      '-'}
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-white rounded-2xl p-4 flex items-center gap-3">
+                <Barcode />
+                <div>
+                  <div className="text-sm text-gray-500">Barcode</div>
+                  <div className="font-semibold">
+                    {selected.barcode || selected.BARCODE || '-'}
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-white rounded-2xl p-4">
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  {Object.entries(selected).map(([key, value]) => (
+                    <div key={key} className="border rounded-xl p-3">
+                      <div className="text-gray-500 text-xs mb-1">{key}</div>
+                      <div className="font-medium break-all">
+                        {String(value)}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="h-full flex items-center justify-center text-gray-400 text-center py-20">
+              Pilih produk untuk melihat detail
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div className="mt-6 bg-yellow-50 border border-yellow-200 rounded-2xl p-4 text-sm text-yellow-800">
+        Jika data tidak muncul kemungkinan API terkena CORS protection.
+        Solusi terbaik adalah menggunakan backend proxy Node.js atau Next.js API Route.
+      </div>
+    </div>
+  )
+}
